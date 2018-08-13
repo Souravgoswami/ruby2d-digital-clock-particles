@@ -1,40 +1,58 @@
 #!/usr/bin/env ruby
 # Created by Sourav Goswami, thanks to ruby2d
+# This digital clock is tested on GNU/Linux 64 bit OS with i3 6th gen processor.
+# The result is not bad. But more Particles = more RAM and CPU usage.
+# Change the fonts if it doesn't suit you!
+# I wanted to make all in a single file to keep things simple. That means more time to scroll up and down.
+# This is designed to keep in a exported path, so that it can be run directly from the linux terminal!
+#
+# TIPS:
+# Change the <textfont = path + (Dir.entries path).sample> with your font if the program has some font issue and crashes
+
 begin
 	require 'ruby2d'
+
 rescue LoadError => err
 	puts "An error occured:\n\t#{err}\nThat means Ruby2D is not yet installed :("
 	abort "For more info, visit:\033[1;34m http://www.ruby2d.com/learn/get-started/"
+
 else
+	# A class to handle other objects easily
 	class Particles
 		attr_accessor :hash, :square
+		# Get the Hash, which is used later part to make things easier...
 		def initialize(hash)
 			@hash = hash
 		end
 
+		# Create a Square object from Ruby2d library. Takes two optional parametres
 		def self.square(special=false, fizz=false)
 			extend Ruby2D::DSL
 			size = rand(10..50) unless special
 			size = rand(10..15) if special
 			colour = $colours.sample unless special
 			if special
-				magical_colours = %w(yellow white blue #ff50a6 #3ce3b4)
+				magical_colours = %w(yellow white orange lime)
 				colour = []
 				until colour.length == 4 do colour << magical_colours.delete(magical_colours.sample) ; end
 			end
 
+			# Make the fizz particles white!
 			colour = 'white' if fizz
 			z = 1 unless special
+
+			# Hide the Squares (that are drawn with the cursor) initially, and later rechange z value
 			z = -1 if special
-			Square.new x: rand(0..$width) ,y: rand(0..$height), size: size,
-				color: colour, z: z
+			Square.new x: rand(0..$width) ,y: rand(0..$height), size: size, color: colour, z: z
 		end
 
+		# Control the opacity of the objects
 		def alpha(obj, magical=false)
 			obj.opacity = rand(0.2..1) if obj.opacity <= 0.1 and !magical
 			obj.opacity = rand(0.1..0.5) if obj.opacity < 0.1 and magical
 		end
 
+		# Change the position of the objects accordingly (used in loop)
 		def draw(down=false, right=false, left=false)
 			@hash.values.each { |n| if down then n.y += 1 ; else n.y -= 1 end
 				n.x += 1 if right
@@ -43,6 +61,7 @@ else
 		}
 		end
 
+		# Change the position of particles, randomly!
 		def change
 			@hash.values.each do |n|
 				n.y=  rand(0..$height) if n.y <= 0 or n.y >= $height
@@ -51,6 +70,7 @@ else
 			end
 		end
 
+		# Change the position of a single Ruby2d::Square object
 		def pos(posx, posy)
 				object = @hash.values.sample
 				object.x, object.y, object.z = posx, posy, 1
@@ -67,9 +87,10 @@ else
 		$colours = []
 		colour.permutation { |i| $colours << i }
 
+		# Get the user's home path to load some local fonts. If you are encountering problems, change it!
 		path = "#{ENV['HOME']}/.local/share/fonts/"
 		textfont = path + (Dir.entries path).sample
-		textfont = path + "ArimaKoshi-Bold.otf"
+		#textfont = path + "ArimaKoshi-Bold.otf"	# You can use your favourite font too!
 		puts "Using #{textfont} font"
 
 		p = Proc.new { |f| Time.new.strftime(f) }
@@ -77,6 +98,7 @@ else
 
 		set title: "Clock", width: 640, height: 480, resizable: true
 
+		# Some hardcoded values!
 		date = Text.new x: 185, y: 80, font: textfont, size: 60, text: p.call('%D'), z: 2
 		tm = Text.new x: 160, y: 180, font: textfont, size: 60, text: p.call('%T:%N'), z: 2
 		day  = Text.new x: 200, y: 280, font: textfont, size: 60, text: p.call('%A'), z: 2
@@ -84,13 +106,15 @@ else
 		greeting = Text.new x: 180, y: 30, font: textfont, size: 40, text: "Hello!", z: 0
 		qd = Quad.new x2: $width, x3: $width, y3: $height, y4: $height, color: $colours.sample
 
+		# Create hashes, and store Square objects in the hash
 		h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, s = {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, Particles
-		for i in 1..rand(4..8) do
+		for i in 1..rand(5..10) do
 			h1.merge! "sq#{i}": s.square ; h2.merge! "sq#{i}": s.square
 			h3.merge! "sq#{i}": s.square ; h4.merge! "sq#{i}": s.square
 			h5.merge! "sq#{i}": s.square ; h6.merge! "sq#{i}": s.square
 		end
 
+		# Store small particles in the hash, that will be shown on :mouse_move and to show white small squares
 		for i in 1..20
 			h7.merge! "sq#{i}": s.square(true)
 			h8.merge! "sq#{i}": s.square(true)
@@ -100,23 +124,30 @@ else
 			h12.merge! "sq#{i}": s.square(true, true)
 		end
 
+		# Hashes are passed to Particles, and assigned to obj1 to obj12. This will help to use the draw, change, and pos  methods
 		obj1, obj2, obj3 = Particles.new(h1), Particles.new(h2), Particles.new(h3)
 		obj4, obj5, obj6 = Particles.new(h4), Particles.new(h5), Particles.new(h6)
 		obj7, obj8, obj9 = Particles.new(h7), Particles.new(h8), Particles.new(h9)
 		obj10, obj11, obj12 = Particles.new(h10), Particles.new(h11), Particles.new(h12)
 
+		# Get mouse press events
 		on :mouse_down do  |e|
+			# Change the background colour (index 1) when the mouse is pressed!
 			qd.color = $colours.rotate![1]
 			obj1.change
 			obj2.change
-			t = p.call('%H').to_i
 
+			# Show the Good Morning etc. messages, and also a proper 12H time format when the mouse is pressed
 			message.text = p.call('%a, %b %d, %I:%M %p')
 			message.z = greeting.z = 2
 			message.x, greeting.x = 170, 180
 			message.y, greeting.y = 380, 30
 			message.opacity = greeting.opacity = 1
 
+			# Get the current time in 1..23 hour format, required just below!
+			t = p.call('%H').to_i
+
+			# Get the greeting text! Morning time = Good Morning!...
 			if t >=  5 and t < 12 then greeting.text = "Good Morning!..."
 			elsif t >=  12 and t < 16 then greeting.text = "Good Afternoon."
 			elsif t >=  16 and t < 19 then greeting.text = "Good Evening!!..."
@@ -126,6 +157,14 @@ else
 				obj11.pos(rand(-100..$width), rand(0..$height))
 			end
 			boxes = true
+
+			# Draw Square objects that are also activated when mouse_move. Draw them twice!
+			obj7.pos(e.x, e.y)
+			obj8.pos(e.x, e.y)
+			obj9.pos(e.x, e.y)
+			obj7.pos(e.x + rand(0..20), e.y + rand(0..20))
+			obj8.pos(e.x + rand(0..20), e.y + rand(0..20))
+			obj9.pos(e.x + rand(0..20), e.y + rand(0..20))
 		end
 
 		on :mouse_move do |e|
@@ -134,7 +173,9 @@ else
 			obj9.pos(e.x, e.y)
 		end
 
+		# Update the screen, and do some tasks
 		update do
+			# Method from class Particles: def draw(down=false, right=false, left=false)
 			obj1.draw true
 			obj2.draw
 			obj3.draw(false, true)
@@ -148,9 +189,11 @@ else
 			obj11.draw(false, false, true)
 			obj12.draw(false, true, false)
 
+			# Animate the message and greeting text!
 			message.opacity -= 0.01 unless message.opacity < 0
 			greeting.opacity -= 0.01 unless message.opacity < 0
 
+			# Make it faster for a while, increment by 3, and then 1
 			message.x += 3 unless message.x >= $width - message.width
 			greeting.x -= 3 unless greeting.x < 0
 
@@ -158,14 +201,18 @@ else
 			greeting.x -= 1 unless greeting.x < -greeting.width
 
 			tm.text = p.call('%T:%N')[0..10]
+
+			# A higher sleep will make the smooth animations to stutter, but will also reduce the CPU usage significantly
 			sleep 0.01
 
+			# boxes is a Boolean object, that controls when to show which squares!
 			unless boxes
 				obj10.pos(rand(0..$width), $height)
 				obj11.pos(rand(0..$width), $height)
 				obj12.pos(rand(0..$width), $height)
 			end
 
+			# In each second do the following (to reduce the CPU usage). Updating them faster than this, is not required...
 			if time.next == p.call('%s')
 				qd.color = $colours.rotate![0]
 				date.text, day.text = p.call('%D'), p.call('%A')
@@ -177,9 +224,10 @@ else
 				boxes = true if time.to_i %  5 == 0
 			end
 
+			# Change the time to ensure that the above condition works correctly
 			time = p.call('%s')
-		end
+		end	# End of update block
 		show
-	end
-main
-end
+	end		# End of main method block
+main			# Call the above main method
+end			# End of begin, rescue, else block
