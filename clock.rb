@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # Created by Sourav Goswami, thanks to ruby2d
 begin
-	require 'ruby2dd'
+	require 'ruby2d'
 rescue LoadError => err
 	puts "An error occured:\n\t#{err}\nThat means Ruby2D is not yet installed :("
 	abort "For more info, visit:\033[1;34m http://www.ruby2d.com/learn/get-started/"
