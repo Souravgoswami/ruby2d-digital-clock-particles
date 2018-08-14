@@ -19,37 +19,19 @@ rescue LoadError => err
 else
 	# A class to handle other objects easily
 	class Particles
-		attr_accessor :hash, :square
+		attr_reader :hash, :square
 		# Get the Hash, which is used later part to make things easier...
 		def initialize(hash)
 			@hash = hash
 		end
 
 		# Create a Square object from Ruby2d library. Takes two optional parametres
-		def self.square(special=false, fizz=false)
+		def self.square()
 			extend Ruby2D::DSL
-			size = rand(10..50) unless special
-			size = rand(10..15) if special
-			colour = $colours.sample unless special
-			if special
-				magical_colours = %w(yellow white orange lime)
-				colour = []
-				until colour.length == 4 do colour << magical_colours.delete(magical_colours.sample) ; end
-			end
-
-			# Make the fizz particles white!
-			colour = 'white' if fizz
-			z = 1 unless special
-
-			# Hide the Squares (that are drawn with the cursor) initially, and later rechange z value
-			z = -1 if special
+			size = rand(10..50)
+			colour = $colours.sample
+			z = 1
 			Square.new x: rand(0..$width) ,y: rand(0..$height), size: size, color: colour, z: z
-		end
-
-		# Control the opacity of the objects
-		def alpha(obj, magical=false)
-			obj.opacity = rand(0.2..1) if obj.opacity <= 0.1 and !magical
-			obj.opacity = rand(0.1..0.5) if obj.opacity < 0.1 and magical
 		end
 
 		# Change the position of the objects accordingly (used in loop)
@@ -57,8 +39,13 @@ else
 			@hash.values.each { |n| if down then n.y += 1 ; else n.y -= 1 end
 				n.x += 1 if right
 				n.x -= 1 if left
-				n.opacity -= rand(0.005..0.01)
-		}
+				n.opacity -= rand(0.005..0.01)	}
+		end
+
+		# Control the opacity of the objects
+		def alpha(obj, magical=false)
+			obj.opacity = rand(0.2..1) if obj.opacity <= 0.1 and !magical
+			obj.opacity = rand(0.1..0.5) if obj.opacity < 0.1 and magical
 		end
 
 		# Change the position of particles, randomly!
@@ -69,28 +56,47 @@ else
 				alpha(n)
 			end
 		end
+end
 
-		# Change the position of a single Ruby2d::Square object
-		def pos(posx, posy)
-				object = @hash.values.sample
-				object.x, object.y, object.z = posx, posy, 1
-				self.alpha(object, true)
-				self.draw
-		end
+class MagicParticles < Particles
+	attr_reader :hash
+	def initialize(hash)
+		@hash = hash
 	end
+
+	def self.square(fizz=false)
+		extend Ruby2D::DSL
+		size, colour = rand(10..15), []
+
+		unless fizz
+			magical_colours = %w(yellow white green lime silver orange)
+			until colour.length == 4 do colour << magical_colours.delete(magical_colours.sample) ; end
+		else
+			colour = 'white'
+		end
+
+		# Create a new Square object for MagicalParticle!
+		Square.new x: rand(0..$width) ,y: rand(0..$height), size: size, color: colour, z: -1
+	end
+
+	def pos(posx, posy)
+			object = @hash.values.sample
+			object.x, object.y, object.z = posx, posy, 1
+			alpha(object, true)
+	end
+end
 
 	def main()
 		$width, $height = 640, 480
 		all_colours = %w(#3ce3b5 fuchsia orange blue white green red #E58AE8 #EB65BB #FFFFFF)
-		colour = []
+		$colours, colour = [], []
 		until colour.length == 4 do colour << all_colours.delete(all_colours.sample) ; end
-		$colours = []
 		colour.permutation { |i| $colours << i }
 
 		# Get the user's home path to load some local fonts. If you are encountering problems, change it!
 		path = "#{ENV['HOME']}/.local/share/fonts/"
 		textfont = path + (Dir.entries path).sample
-		#textfont = path + "ArimaKoshi-Bold.otf"	# You can use your favourite font too!
+		# Works nice with textfont = path + "ArimaKoshi-Bold.otf"	# You can use your favourite font too!
 		puts "Using #{textfont} font"
 
 		p = Proc.new { |f| Time.new.strftime(f) }
@@ -115,27 +121,25 @@ else
 		end
 
 		# Store small particles in the hash, that will be shown on :mouse_move and to show white small squares
+		s = MagicParticles
 		for i in 1..20
-			h7.merge! "sq#{i}": s.square(true)
-			h8.merge! "sq#{i}": s.square(true)
-			h9.merge! "sq#{i}": s.square(true)
-			h10.merge! "sq#{i}": s.square(true, true)
-			h11.merge! "sq#{i}": s.square(true, true)
-			h12.merge! "sq#{i}": s.square(true, true)
+			h7.merge! "sq#{i}": s.square ; h8.merge! "sq#{i}": s.square
+			h9.merge! "sq#{i}": s.square ; h10.merge! "sq#{i}": s.square(true)
+			h11.merge! "sq#{i}": s.square(true) ; h12.merge! "sq#{i}": s.square(true)
 		end
 
 		# Hashes are passed to Particles, and assigned to obj1 to obj12. This will help to use the draw, change, and pos  methods
-		obj1, obj2, obj3 = Particles.new(h1), Particles.new(h2), Particles.new(h3)
-		obj4, obj5, obj6 = Particles.new(h4), Particles.new(h5), Particles.new(h6)
-		obj7, obj8, obj9 = Particles.new(h7), Particles.new(h8), Particles.new(h9)
-		obj10, obj11, obj12 = Particles.new(h10), Particles.new(h11), Particles.new(h12)
+		obj7, obj8, obj9, obj10, obj11, obj12 = s.new(h7), s.new(h8), s.new(h9), s.new(h10), s.new(h11), s.new(h12)
+
+		s = Particles
+		obj1, obj2, obj3, obj4, obj5, obj6 = s.new(h1), s.new(h2), s.new(h3), s.new(h4), s.new(h5), s.new(h6)
 
 		# Get mouse press events
 		on :mouse_down do  |e|
 			# Change the background colour (index 1) when the mouse is pressed!
 			qd.color = $colours.rotate![1]
-			obj1.change
-			obj2.change
+
+			obj1.change ; obj2.change
 
 			# Show the Good Morning etc. messages, and also a proper 12H time format when the mouse is pressed
 			message.text = p.call('%a, %b %d, %I:%M %p')
@@ -154,40 +158,29 @@ else
 			else greeting.text = "Very Good Night" ; end
 			20.times do
 				obj10.pos(rand(0..100), rand(0..$height))
-				obj11.pos(rand(-100..$width), rand(0..$height))
+				obj11.pos(rand($width - 100..$width), rand(0..$height))
 			end
 			boxes = true
-
 			# Draw Square objects that are also activated when mouse_move. Draw them twice!
-			obj7.pos(e.x, e.y)
-			obj8.pos(e.x, e.y)
-			obj9.pos(e.x, e.y)
-			obj7.pos(e.x + rand(0..20), e.y + rand(0..20))
-			obj8.pos(e.x + rand(0..20), e.y + rand(0..20))
-			obj9.pos(e.x + rand(0..20), e.y + rand(0..20))
+			rand(2..6).times do
+				obj7.pos(e.x + rand(0..20), e.y + rand(0..20))
+				obj8.pos(e.x + rand(0..20), e.y + rand(0..20))
+				obj9.pos(e.x + rand(0..20), e.y + rand(0..20))
+			end
 		end
 
 		on :mouse_move do |e|
-			obj7.pos(e.x, e.y)
-			obj8.pos(e.x, e.y)
-			obj9.pos(e.x, e.y)
+			obj7.pos(e.x, e.y) ; obj8.pos(e.x, e.y) ; obj9.pos(e.x, e.y)
 		end
 
-		# Update the screen, and do some tasks
 		update do
 			# Method from class Particles: def draw(down=false, right=false, left=false)
-			obj1.draw true
-			obj2.draw
-			obj3.draw(false, true)
-			obj4.draw(true, false, true)
-			obj5.draw(true, true)
+			obj1.draw true ; obj2.draw	; obj3.draw(false, true)
+			obj4.draw(true, false, true)	; obj5.draw(true, true)
 			obj6.draw(false, false, true)
-			obj7.draw
-			obj8.draw(true, true, false)
-			obj9.draw(true, false, true)
-			obj10.draw(false, true)
-			obj11.draw(false, false, true)
-			obj12.draw(false, true, false)
+
+			obj7.draw ; obj8.draw(true, true) ; obj9.draw(true, false, true)
+			obj10.draw(false, true) ; obj11.draw(false, false, true) ; obj12.draw(false, true)
 
 			# Animate the message and greeting text!
 			message.opacity -= 0.01 unless message.opacity < 0
@@ -207,12 +200,12 @@ else
 
 			# boxes is a Boolean object, that controls when to show which squares!
 			unless boxes
-				obj10.pos(rand(0..$width), $height)
-				obj11.pos(rand(0..$width), $height)
+				obj10.pos(rand(0..$width), rand($height - 100..$height - 30))
+				obj11.pos(rand(0..$width), rand($height - 50..$height))
 				obj12.pos(rand(0..$width), $height)
 			end
 
-			# In each second do the following (to reduce the CPU usage). Updating them faster than this, is not required...
+			# Every second do the following (to reduce the CPU usage). Updating them faster than this, is not required...
 			if time.next == p.call('%s')
 				qd.color = $colours.rotate![0]
 				date.text, day.text = p.call('%D'), p.call('%A')
